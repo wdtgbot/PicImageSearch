@@ -1,6 +1,8 @@
 # AIOHTTP PicImageSearch
 整合图片识别api,用于以图搜源(以图搜图，以图搜番)，支持SauceNAO,tracemoe,iqdb,ascii2d,google(谷歌识图),baidu(百度识图)等
 
+# For this version Baidu doesn't work, still trying to figure out
+
 # Asynchronous version PicImageSearch
 
 how to use it is different, in this version you need to call the Search class in PicImageSearch then call the function with the name of the website that supports it
