@@ -81,7 +81,7 @@ class Search:
                     content_type="multipart/form-data"
                 )
             # urllib3.disable_warnings()
-            response = await self.session.post(ASCII2DURL, data=m, ssl=False, **requests_kwargs)
+            response = await self.session.post(ASCII2DURL, data=m, **requests_kwargs)
             if response.status == 200:
                 resp = await response.text()
                 return Ascii2DResponse(resp)
@@ -295,7 +295,7 @@ class Search:
                     content_type="multipart/form-data"
                 )
             # urllib3.disable_warnings()
-            resp = await self.session.post(SAUCENAO, data=m, params=params, ssl=False, **requests_kwargs)
+            resp = await self.session.post(SAUCENAO, data=m, params=params, **requests_kwargs)
             if resp.status == 200:
                 data = await resp.json()
                 return SauceNAOResponse(data)
@@ -342,12 +342,12 @@ class Search:
             params = dict()
             if url[:4] == 'http':  # 网络url
                 params['url'] = url
-                res = await self.session.get(TRACEMOE, params=params, ssl=False, **requests_kwargs)
+                res = await self.session.get(TRACEMOE, params=params, **requests_kwargs)
                 if res.status == 200:
                     data = await res.json()
                     return TraceMoeResponse(data, mute)
                 else:
-                    logger.error(self._errors(res.status_code))
+                    logger.error(self._errors(res.status))
             else:  # 是否是本地文件
                 img = self._base_64(url)
                 res = await self.session.post(TRACEMOE, json={"image": img, "filter": Filter}, **requests_kwargs)
@@ -355,6 +355,6 @@ class Search:
                     data = await res.json()
                     return TraceMoeResponse(data, mute)
                 else:
-                    logger.error(self._errors(res.status_code))
+                    logger.error(self._errors(res.status))
         except Exception as e:
             logger.info(e)
