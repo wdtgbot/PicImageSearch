@@ -1,8 +1,8 @@
 import asyncio
-from pathlib2 import Path
 
 import aiofiles
 import httpx
+from pathlib2 import Path
 
 
 class NetWork:
@@ -34,6 +34,7 @@ class NetWork:
                 max_keepalive_connections=limit, max_connections=max_connections
             ),
             trust_env=env,
+            event_hooks={"response": [raise_on_4xx_5xx]},
         )
 
     def start(self):
@@ -49,6 +50,10 @@ class NetWork:
     async def __aexit__(self, exc_type, exc, tb):
         await asyncio.sleep(0)
         await self.client.aclose()
+
+
+async def raise_on_4xx_5xx(response: httpx.Response):
+    response.raise_for_status()
 
 
 class ClientManager:
@@ -76,15 +81,24 @@ class HandOver(object):
         self.proxies = proxies
         self.requests_kwargs = requests_kwargs
 
-    async def get(self, _url, _headers=None, _params=None):
+    # 有可能遇到没自动跳转的情况
+    async def auto_redirect(self, res: httpx.Response, _headers=None) -> httpx.Response:
+        if res.is_redirect and res.url != res.headers["location"]:
+            async with ClientManager(self.session, self.env, self.proxies) as session:
+                res = await session.get(res.headers["location"], headers=_headers)
+                await asyncio.sleep(0)
+                return res
+        return res
+
+    async def get(self, _url, _headers=None, _params=None) -> httpx.Response:
         async with ClientManager(self.session, self.env, self.proxies) as session:
             res = await session.get(_url, headers=_headers, params=_params)
             await asyncio.sleep(0)
-            return res
+            return await self.auto_redirect(res, _headers=_headers)
 
     async def post(
         self, _url, _headers=None, _params=None, _data=None, _json=None, _files=None
-    ):
+    ) -> httpx.Response:
         async with ClientManager(self.session, self.env, self.proxies) as session:
             if _json:
                 res = await session.post(
@@ -99,9 +113,9 @@ class HandOver(object):
                     _url, headers=_headers, params=_params, data=_data
                 )
             await asyncio.sleep(0)
-            return res
+            return await self.auto_redirect(res, _headers=_headers)
 
-    async def downloader(self, url="", path=None, filename=""):  # 下载器
+    async def downloader(self, url="", path=None, filename="") -> Path:  # 下载器
         async with ClientManager(self.session, self.env, self.proxies) as session:
             async with session.stream("GET", url=url) as r:
                 if path:

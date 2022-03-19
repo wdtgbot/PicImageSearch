@@ -1,7 +1,6 @@
 from loguru import logger
 
 from .network import HandOver
-from .Utils import get_error_message
 from .Utils.iqdb import IqdbResponse
 
 
@@ -55,11 +54,7 @@ class Iqdb(HandOver):
                 res = await self.post(self.url, _data=data)
             else:  # 是否是本地文件
                 res = await self.post(self.url, _files={"file": open(url, "rb")})
-            if res.status_code == 200:
-                # logger.info(res.text)
-                return IqdbResponse(res.content)
-            else:
-                logger.error(get_error_message(res.status_code))
+            return IqdbResponse(res.content)
         except Exception as e:
             logger.error(e)
 
@@ -87,9 +82,6 @@ class Iqdb(HandOver):
                 res = await self.post(self.url_3d, _data=data)
             else:  # 是否是本地文件
                 res = await self.post(self.url_3d, _files={"file": open(url, "rb")})
-            if res.status_code == 200:
-                return IqdbResponse(res.content)
-            else:
-                logger.error(get_error_message(res.status_code))
+            return IqdbResponse(res.content)
         except Exception as e:
             logger.error(e)

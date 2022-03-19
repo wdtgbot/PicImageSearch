@@ -6,86 +6,80 @@ from bs4.element import NavigableString, Tag
 
 
 class IqdbNorm:
-    iqdb_url = "https://iqdb.org"
+    no_more: bool = True
+    # 备注
+    content: str = ""
+    # url地址
+    url: str = ""
+    # 来源平台名称
+    source: str = ""
+    # 其他来源
+    other_source: list = []
+    # 缩略图地址
+    thumbnail: str = ""
+    # 原图长宽大小
+    size: str = ""
+    # 相似值
+    similarity: float = 0
 
-    def __init__(self, data: Tag, isnot_more: bool = True):
-        self.isnot_more: bool = isnot_more
-        """"""
-        self.content: str = "None"
-        """备注"""
-        self.url: str = "None"
-        """url地址"""
-        self.source: str = "None"
-        """来源平台名称"""
-        self.other_source: list = list()
-        """其他来源"""
-        self.thumbnail: str = "None"
-        """缩略图地址"""
-        self.size: str = "None"
-        """原图长宽大小"""
-        self.similarity: str = "None"
-        """	相似值"""
+    def __init__(self, data: Tag, no_more: bool = True):
+        self.no_more = no_more
         self._arrange(data.table)
 
     def _arrange(self, data: Tag):
         regex_iq = re.compile("[0-9]+")
-        if self.isnot_more:
+        if self.no_more:
             self.content = data.tr.th.string
             if self.content == "No relevant matches":
                 return
-            # logger.info(self.content)
             tbody = data.tr.next_sibling
         else:
             tbody = data.tr
-        self.url = (
-            tbody.td.a["href"]
-            if tbody.td.a["href"][:4] == "http"
-            else "https:" + tbody.td.a["href"]
-        )
-        self.thumbnail = self.iqdb_url + tbody.td.a.img["src"]
+        self.url = self._get_url(tbody.td.a["href"])
+        self.thumbnail = "https://iqdb.org" + tbody.td.a.img["src"]
         tbody = tbody.next_sibling
         source = [stt for stt in tbody.td.strings]
         if len(source) > 1:
             self.other_source.append(
-                {
-                    "source": source[1],
-                    "url": tbody.td.a["href"]
-                    if tbody.td.a["href"][:4] == "http"
-                    else "https:" + tbody.td.a["href"],
-                }
+                {"source": source[1], "url": self._get_url(tbody.td.a["href"])}
             )
         tbody = tbody.next_sibling
         self.size = tbody.td.string
         similarity_raw = regex_iq.search(tbody.next_sibling.td.string)
         if similarity_raw:
-            self.similarity = similarity_raw.group(0) + "%"
+            self.similarity = float(similarity_raw.group(0))
         self.source = source[0]
 
+    @staticmethod
+    def _get_url(url: str):
+        if url[:4] == "http":
+            return url
+        return f"https:{url}"
+
     def __repr__(self):
-        return f"<NormIqdb(content={repr(self.content)}, title={repr(self.source)}, similarity={repr(self.similarity)}>"
+        return f"<IqdbNorm(content={repr(self.content)}, source={repr(self.source)}, similarity={self.similarity})>"
 
 
 class IqdbResponse:
     def __init__(self, res: bytes):
+        # 原始返回值
         self.origin: bytes = res
-        """原始返回值"""
-        # logger.info(type(self.origin))
-        self.raw: List[IqdbNorm] = list()
-        """结果返回值"""
-        self.more: List[IqdbNorm] = list()
-        """更多结果返回值(低相似度)"""
-        self.saucenao: str = "None"
-        """SauceNao搜索链接"""
-        self.ascii2d: str = "None"
-        """Ascii2d搜索链接"""
-        self.google: str = "None"
-        """Google搜索链接"""
-        self.tineye: str = "None"
-        """TinEye搜索链接"""
+        # 结果返回值
+        self.raw: List[IqdbNorm] = []
+        # 更多结果返回值(低相似度)
+        self.more: List[IqdbNorm] = []
+        # SauceNao搜索链接
+        self.saucenao_url: str = ""
+        # Ascii2d搜索链接
+        self.ascii2d_url: str = ""
+        # Google搜索链接
+        self.google_url: str = ""
+        # TinEye搜索链接
+        self.tineye_url: str = ""
         self._slice(res)
 
     def _slice(self, data: bytes) -> None:
-        soup: BeautifulSoup = BeautifulSoup(data, "html.parser")
+        soup = BeautifulSoup(data, "html.parser")
 
         pages = soup.find(attrs={"class": "pages"})
         for i in pages:
@@ -108,13 +102,13 @@ class IqdbResponse:
                 if j["href"] == "#":
                     continue
                 if j.string == "SauceNao":
-                    self.saucenao = "https:" + j["href"]
+                    self.saucenao_url = "https:" + j["href"]
                 elif j.string == "ascii2d.net":
-                    self.ascii2d = j["href"]
+                    self.ascii2d_url = j["href"]
                 elif j.string == "Google Images":
-                    self.google = "https:" + j["href"]
+                    self.google_url = "https:" + j["href"]
                 elif j.string == "TinEye":
-                    self.tineye = "https:" + j["href"]
+                    self.tineye_url = "https:" + j["href"]
 
     def __repr__(self):
-        return f"<IqdbResponse(count={repr(len(self.raw))})>"
+        return f"<IqdbResponse(count={len(self.raw)})>"

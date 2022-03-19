@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 from loguru import logger
 
 from .network import HandOver
-from .Utils import GoogleResponse, get_error_message
+from .Utils import GoogleResponse
 
 
 class Google(HandOver):
@@ -36,10 +36,9 @@ class Google(HandOver):
         pages = soup.find_all("td")
         return GoogleResponse(res, pages[1:], index)
 
-    async def goto_page(self, url, index):
+    async def goto_page(self, url, index) -> GoogleResponse:
         response = await self.get(url, _headers=self.header)
-        if response.status_code == 200:
-            return self._slice(response.text, index)
+        return self._slice(response.text, index)
 
     async def search(self, url) -> GoogleResponse:
         """
@@ -70,9 +69,6 @@ class Google(HandOver):
                 response = await self.post(
                     f"{self.url}/upload", _files=multipart, _headers=self.header
                 )
-            if response.status_code == 200:
-                return self._slice(response.text, 1)
-            else:
-                logger.error(get_error_message(response.status_code))
+            return self._slice(response.text, 1)
         except Exception as e:
             logger.error(e)
